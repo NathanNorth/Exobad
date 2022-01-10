@@ -16,8 +16,8 @@ import reactor.core.publisher.Mono;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.time.Duration;
-import java.time.Instant;
+import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -56,7 +56,8 @@ public class Main {
                     .flatMap(reactionAddEvent -> reactionAddEvent.getMessage().map(message -> {
                         makeAppointment(message);
                         return Mono.empty();
-                    }));
+                    }))
+                    .doOnError(e -> e.printStackTrace());
         }
 
         @Override
@@ -82,11 +83,11 @@ public class Main {
             for(int i = 0; i < 20; i++) temp += user.getMention();
             String finalTemp = temp;
             return client.getChannelById(a.channel).ofType(MessageChannel.class).flatMap(chan ->
-                    chan.createMessage("LOSER ALERT " + user.getMention() + "!!!").then(
-                            chan.createMessage("YOUR'RE LATE YOU IDIOT!!!").then(
-                                    chan.createMessage("WHAT ARE YOU WAITING FOR!?!?!").then(
-                                            chan.createMessage("https://tenor.com/view/police-siren-siren-gif-14993722").then(
-                                                    chan.createMessage(spec -> spec.setContent(finalTemp).setTts(false)))))))
+                            chan.createMessage("LOSER ALERT " + user.getMention() + "!!!").then(
+                                    chan.createMessage("YOUR'RE LATE YOU IDIOT!!!").then(
+                                            chan.createMessage("WHAT ARE YOU WAITING FOR!?!?!").then(
+                                                    chan.createMessage("https://tenor.com/view/police-siren-siren-gif-14993722").then(
+                                                            chan.createMessage(spec -> spec.setContent(finalTemp).setTts(false)))))))
                     .then(Mono.fromRunnable(() -> appointments.remove(a)));
         });
     }
@@ -123,12 +124,11 @@ public class Main {
             }
             if(match.length() == 4) match = 0 + match; //add leading zero
 
-            //create a custom instant
-            String instant = Instant.now().toString();
-            instant = instant.substring(0, instant.indexOf("T") + 1);
-            instant += match + ":00.00Z";
-            Instant i = Instant.parse(instant);
-            i = i.plus(Duration.ofHours(4)); //offset for EST
+
+
+            LocalTime time = LocalTime.parse(match, DateTimeFormatter.ofPattern("HH:mm"));
+            LocalDateTime date = LocalDate.now().atTime(time);
+            Instant i = ZonedDateTime.of(date, ZoneId.of("US/Eastern")).toInstant();
 
             //infer am/pm
             if(Duration.between(Instant.now(), i).compareTo(Duration.ofHours(12)) > 0) i = i.minus(Duration.ofHours(12));
